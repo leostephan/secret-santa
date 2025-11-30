@@ -1,0 +1,14 @@
+{
+  "name": "secret-santa",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "https://github.com/leostephan/secret-santa.git",
+  "author": "Leo Stephan <leo.stephan@winamax.fr>",
+  "license": "MIT",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend",
+    "common"
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "entryFile": "src/index.ts",
+  "noImplicitAdditionalProperties": "throw-on-extras",
+  "controllerPathGlobs": ["src/controllers/**/*.ts"],
+  "spec": {
+    "outputDirectory": "dist",
+    "specVersion": 3,
+    "name": "Secret Santa API",
+    "description": "API REST pour gérer des sessions de Secret Santa avec authentification JWT",
+    "version": "1.0.0",
+    "contact": {
+      "name": "Leo Stephan",
+      "email": "leo.stephan@winamax.fr"
+    },
+    "securityDefinitions": {
+      "jwt": {
+        "type": "apiKey",
+        "name": "Authorization",
+        "in": "header"
+      }
+    }
+  },
+  "routes": {
+    "routesDir": "src",
+    "middleware": "express",
+    "basePath": "/api",
+    "authenticationModule": "./src/middleware/tsoa-auth.middleware.ts"
+  }
+}
