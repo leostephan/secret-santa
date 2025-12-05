@@ -29,11 +29,11 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: ${NODE_ENV:-development}
-      PORT: ${PORT:-3000}
+      PORT: ${BACKEND_PORT:-3000}
       DATABASE_URL: ${DATABASE_URL}
       JWT_SECRET: ${JWT_SECRET}
     ports:
-      - "3000:3000"
+      - "${BACKEND_PORT:-3000}:${BACKEND_PORT:-3000}"
     volumes:
       - ./backend/src:/app/backend/src
       - ./common/src:/app/common/src
@@ -44,6 +44,21 @@ services:
       - secret-santa-network
     working_dir: /app/backend
     command: npx ts-node src/index.ts
+
+  # Serveur Frontend
+  server:
+    build:
+      context: .
+      dockerfile: ./server/Dockerfile
+    container_name: secret-santa-server
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: ${SERVER_PORT:-3001}
+    ports:
+      - "${SERVER_PORT:-3001}:${SERVER_PORT:-3001}"
+    networks:
+      - secret-santa-network
 
 volumes:
   postgres_data:

@@ -60,11 +60,13 @@ export const SUCCESS_MESSAGES = {
 } as const;
 
 // Statuts de session
-export enum SessionStatus {
-  PENDING = 'pending',
-  STARTED = 'started',
-  COMPLETED = 'completed',
-}
+export const SessionStatus = {
+  PENDING: 'pending',
+  STARTED: 'started',
+  COMPLETED: 'completed',
+} as const;
+
+export type SessionStatus = (typeof SessionStatus)[keyof typeof SessionStatus];
 
 // Routes API
 export const API_ROUTES = {
