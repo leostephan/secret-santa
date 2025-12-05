@@ -100,10 +100,11 @@ export const SessionDetailContainer = () => {
   }
 
   // Vérifier si l'utilisateur est participant et n'a pas encore tiré
+  // L'admin peut tirer s'il est aussi participant
   const userParticipant = user?.email
     ? data.participants.find(p => p.email === user.email)
     : undefined;
-  const canPick = !data.is_creator && userParticipant && !userParticipant.has_picked && !data.my_assignment;
+  const canPick = userParticipant && !userParticipant.has_picked && !data.my_assignment && data.session.is_started;
 
   return (
     <PageLayout>
