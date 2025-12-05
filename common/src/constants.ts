@@ -27,6 +27,7 @@ export const ERROR_MESSAGES = {
   // Session
   SESSION_NOT_FOUND: 'Session introuvable',
   SESSION_ALREADY_STARTED: 'Le tirage a déjà été effectué',
+  SESSION_NOT_STARTED: 'La session n\'a pas encore été démarrée',
   SESSION_NOT_ACTIVE: 'Session inactive',
   MIN_PARTICIPANTS_REQUIRED: `Au moins ${VALIDATION.MIN_PARTICIPANTS} participants sont requis`,
   PARTICIPANT_NOT_FOUND: 'Participant introuvable',

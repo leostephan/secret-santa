@@ -1,26 +1,71 @@
 import { Router, Request, Response, NextFunction } from 'express';
+import jwt from 'jsonwebtoken';
 import * as sessionService from '../services/session.service';
 import * as userRepository from '../repositories/user.repository';
 import { SUCCESS_MESSAGES } from '../constants';
+import { ERROR_MESSAGES } from '@secret-santa/common';
+
+// Interface pour les requêtes authentifiées
+interface AuthenticatedRequest extends Request {
+  userId: string;
+}
 
 const router = Router();
 
 // Helper pour convertir Date en ISO string
 const toISOString = (date: Date): string => date.toISOString();
 
+// Helper pour gérer les erreurs et retourner le bon code HTTP
+const handleError = (error: unknown, res: Response): void => {
+  if (!(error instanceof Error)) {
+    res.status(500).json({ error: 'An unknown error occurred' });
+    return;
+  }
+
+  const message = error.message;
+
+  // Erreurs 404 - Ressource non trouvée
+  if (
+    message === ERROR_MESSAGES.SESSION_NOT_FOUND ||
+    message === ERROR_MESSAGES.PARTICIPANT_NOT_FOUND
+  ) {
+    res.status(404).json({ error: message });
+    return;
+  }
+
+  // Erreurs 400 - Requête invalide / état invalide
+  if (
+    message === ERROR_MESSAGES.SESSION_ALREADY_STARTED ||
+    message === ERROR_MESSAGES.SESSION_NOT_STARTED ||
+    message === ERROR_MESSAGES.SESSION_NOT_ACTIVE ||
+    message === ERROR_MESSAGES.ALREADY_PICKED ||
+    message === ERROR_MESSAGES.NO_PARTICIPANTS_AVAILABLE ||
+    message === ERROR_MESSAGES.MIN_PARTICIPANTS_REQUIRED ||
+    message === ERROR_MESSAGES.CANNOT_SELF_ASSIGN ||
+    message === ERROR_MESSAGES.INVALID_EMAIL ||
+    message === ERROR_MESSAGES.SESSION_NAME_TOO_SHORT ||
+    message === ERROR_MESSAGES.SESSION_NAME_TOO_LONG
+  ) {
+    res.status(400).json({ error: message });
+    return;
+  }
+
+  // Erreur 500 par défaut
+  res.status(500).json({ error: message });
+};
+
 // Middleware d'authentification (extrait de tsoa-auth.middleware)
 const authenticateJWT = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   const token = req.headers.authorization?.split(' ')[1];
-  
+
   if (!token) {
     res.status(401).json({ error: 'No token provided' });
     return;
   }
 
   try {
-    const jwt = require('jsonwebtoken');
     const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { userId: string };
-    (req as any).userId = decoded.userId;
+    (req as AuthenticatedRequest).userId = decoded.userId;
     next();
   } catch (error) {
     res.status(401).json({ error: 'Invalid token' });
@@ -32,7 +77,7 @@ const authenticateJWT = async (req: Request, res: Response, next: NextFunction):
  */
 router.post('/', authenticateJWT, async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = (req as any).userId;
+    const userId = (req as AuthenticatedRequest).userId;
     const { name, participants = [] } = req.body;
 
     const session = await sessionService.createSession({
@@ -52,8 +97,8 @@ router.post('/', authenticateJWT, async (req: Request, res: Response): Promise<v
         created_at: toISOString(session.created_at),
       },
     });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
+  } catch (error) {
+    handleError(error, res);
   }
 });
 
@@ -62,7 +107,7 @@ router.post('/', authenticateJWT, async (req: Request, res: Response): Promise<v
  */
 router.get('/:id', authenticateJWT, async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).userId;
+    const userId = (req as AuthenticatedRequest).userId;
     const { id } = req.params;
 
     const session = await sessionService.getSessionById(id);
@@ -91,13 +136,15 @@ router.get('/:id', authenticateJWT, async (req: Request, res: Response) => {
         has_picked: p.has_picked,
       })),
       is_creator: isCreator,
-      my_assignment: myAssignment ? {
-        name: myAssignment.name,
-        email: myAssignment.email,
-      } : undefined,
+      my_assignment: myAssignment
+        ? {
+            name: myAssignment.name,
+            email: myAssignment.email,
+          }
+        : undefined,
     });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
+  } catch (error) {
+    handleError(error, res);
   }
 });
 
@@ -133,8 +180,8 @@ router.get('/invite/:inviteCode', async (req: Request, res: Response) => {
       })),
       is_creator: false,
     });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
+  } catch (error) {
+    handleError(error, res);
   }
 });
 
@@ -143,7 +190,7 @@ router.get('/invite/:inviteCode', async (req: Request, res: Response) => {
  */
 router.get('/user/sessions', authenticateJWT, async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).userId;
+    const userId = (req as AuthenticatedRequest).userId;
     const sessions = await sessionService.getUserSessions(userId);
 
     const sessionsWithCount = await Promise.all(
@@ -163,8 +210,8 @@ router.get('/user/sessions', authenticateJWT, async (req: Request, res: Response
     );
 
     res.json({ sessions: sessionsWithCount });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
+  } catch (error) {
+    handleError(error, res);
   }
 });
 
@@ -176,8 +223,8 @@ router.post('/:id/start', authenticateJWT, async (req: Request, res: Response) =
     const { id } = req.params;
     await sessionService.startSession(id);
     res.json({ message: SUCCESS_MESSAGES.SESSION_STARTED });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
+  } catch (error) {
+    handleError(error, res);
   }
 });
 
@@ -186,7 +233,7 @@ router.post('/:id/start', authenticateJWT, async (req: Request, res: Response) =
  */
 router.post('/:id/update', authenticateJWT, async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).userId;
+    const userId = (req as AuthenticatedRequest).userId;
     const { id } = req.params;
     const { name } = req.body;
 
@@ -209,8 +256,8 @@ router.post('/:id/update', authenticateJWT, async (req: Request, res: Response) 
         is_creator: true,
       },
     });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
+  } catch (error) {
+    handleError(error, res);
   }
 });
 
@@ -233,8 +280,8 @@ router.post('/:id/join', async (req: Request, res: Response) => {
         has_picked: participant.has_picked,
       },
     });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
+  } catch (error) {
+    handleError(error, res);
   }
 });
 
@@ -243,7 +290,7 @@ router.post('/:id/join', async (req: Request, res: Response) => {
  */
 router.post('/:id/join-authenticated', authenticateJWT, async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).userId;
+    const userId = (req as AuthenticatedRequest).userId;
     const { id } = req.params;
 
     const user = await userRepository.findById(userId);
@@ -262,8 +309,8 @@ router.post('/:id/join-authenticated', authenticateJWT, async (req: Request, res
         has_picked: participant.has_picked,
       },
     });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
+  } catch (error) {
+    handleError(error, res);
   }
 });
 
@@ -284,8 +331,8 @@ router.post('/:id/pick', async (req: Request, res: Response) => {
         email: assignedParticipant.email,
       },
     });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
+  } catch (error) {
+    handleError(error, res);
   }
 });
 
@@ -308,37 +355,41 @@ router.get('/:id/assignment', async (req: Request, res: Response) => {
         email: assignment.email,
       },
     });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
+  } catch (error) {
+    handleError(error, res);
   }
 });
 
 /**
  * POST /api/sessions/:id/participants/:participantId/delete - Supprimer un participant
  */
-router.post('/:id/participants/:participantId/delete', authenticateJWT, async (req: Request, res: Response) => {
-  try {
-    const userId = (req as any).userId;
-    const { id, participantId } = req.params;
+router.post(
+  '/:id/participants/:participantId/delete',
+  authenticateJWT,
+  async (req: Request, res: Response) => {
+    try {
+      const userId = (req as AuthenticatedRequest).userId;
+      const { id, participantId } = req.params;
 
-    const session = await sessionService.getSessionById(id);
-    if (!session || session.creator_id !== userId) {
-      return res.status(403).json({ error: 'Unauthorized' });
+      const session = await sessionService.getSessionById(id);
+      if (!session || session.creator_id !== userId) {
+        return res.status(403).json({ error: 'Unauthorized' });
+      }
+
+      await sessionService.deleteParticipant(participantId);
+      res.json({ message: SUCCESS_MESSAGES.PARTICIPANT_DELETED });
+    } catch (error) {
+      handleError(error, res);
     }
-
-    await sessionService.deleteParticipant(participantId);
-    res.json({ message: SUCCESS_MESSAGES.PARTICIPANT_DELETED });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
   }
-});
+);
 
 /**
  * POST /api/sessions/:id/delete - Supprimer une session
  */
 router.post('/:id/delete', authenticateJWT, async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).userId;
+    const userId = (req as AuthenticatedRequest).userId;
     const { id } = req.params;
 
     const session = await sessionService.getSessionById(id);
@@ -348,8 +399,8 @@ router.post('/:id/delete', authenticateJWT, async (req: Request, res: Response) 
 
     await sessionService.deleteSession(id);
     res.json({ message: SUCCESS_MESSAGES.SESSION_DELETED });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
+  } catch (error) {
+    handleError(error, res);
   }
 });
 

@@ -136,6 +136,11 @@ export const pickParticipant = async (
     throw new Error(ERROR_MESSAGES.SESSION_NOT_ACTIVE);
   }
 
+  // Vérifier que la session a été démarrée
+  if (!session.is_started) {
+    throw new Error(ERROR_MESSAGES.SESSION_NOT_STARTED);
+  }
+
   // Vérifier si le participant existe, sinon le créer
   let picker = await sessionRepository.findParticipantByEmail(sessionId, pickerEmail);
 
