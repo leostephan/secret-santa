@@ -53,6 +53,6 @@ COPY --from=builder /app/server/package*.json ./
 # Installer uniquement les dépendances de production
 RUN npm install --production
 
-EXPOSE 3001
+EXPOSE 3002
 
 CMD ["node", "dist/index.js"]

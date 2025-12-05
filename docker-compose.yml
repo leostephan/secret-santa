@@ -54,9 +54,9 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: production
-      PORT: ${SERVER_PORT:-3001}
+      PORT: ${SERVER_PORT:-3002}
     ports:
-      - "${SERVER_PORT:-3001}:${SERVER_PORT:-3001}"
+      - "${SERVER_PORT:-3002}:${SERVER_PORT:-3002}"
     networks:
       - secret-santa-network
 
